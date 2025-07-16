@@ -1,0 +1,13 @@
+# Core dependencies
+atlassian-python-api==4.0.4  # For Confluence API interactions
+mcp==1.9.1  # MCP SDK
+fastmcp==1.0.0  # Framework for creating MCP servers
+
+# Utilities
+python-dotenv==1.0.0  # For managing environment variables
+pydantic==2.11.5  # For data validation and modeling
+
+# Dev dependencies
+pytest==7.4.0  # For testing
+black==23.7.0  # For code formatting
+isort==5.12.0  # For import sorting
