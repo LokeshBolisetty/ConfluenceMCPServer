@@ -104,18 +104,18 @@ class ManageContent:
         try:
             # Clean and escape the query for CQL
             cleaned_query = query.replace('"', '\\"').replace('\\', '\\\\').strip()
-            
+
             # Construct CQL query
             cql = f'type={content_type} AND text ~ "{cleaned_query}"'
             if space_key:
                 cql += f' AND space="{space_key}"'
-            
+
             logger.info(f"Executing CQL search: {cql} with limit {max_results}")
             results = self.confluence.cql(cql, limit=max_results)
-            
+
             result_count = len(results.get('results', []))
             logger.info(f"Search returned {result_count} results")
-            
+
             return self._get_filtered_content(results.get('results', []))
         except Exception as e:
             error_msg = f"Error searching content with query '{query}': {str(e)}"
@@ -137,7 +137,7 @@ class ManageContent:
             cql = f'type={content_type} AND label="{label}"'
             if space_key:
                 cql += f' AND space="{space_key}"'
-            
+
             results = self.confluence.cql(cql, limit=max_results)
             return self._get_filtered_content(results.get('results', []))
         except Exception as e:
@@ -156,23 +156,23 @@ class ManageContent:
     def _get_filtered_pages(self, pages):
         """Filter pages to include only important fields."""
         filtered_pages = []
-        
+
         for page in pages:
             filtered_page = {
                 'id': page.get('id'),
                 'title': page.get('title'),
-                'space': page.get('_expandable', {}).get('space') or 
+                'space': page.get('_expandable', {}).get('space') or
                          (page.get('space', {}).get('key') if 'space' in page else None),
                 'url': page.get('_links', {}).get('webui')
             }
             filtered_pages.append(filtered_page)
-            
+
         return filtered_pages
 
     def _get_filtered_content(self, content_items):
         """Filter content items to include only important fields."""
         filtered_content = []
-        
+
         for item in content_items:
             filtered_item = {
                 'id': item.get('content', {}).get('id') or item.get('id'),
@@ -182,7 +182,7 @@ class ManageContent:
                       item.get('_links', {}).get('webui')
             }
             filtered_content.append(filtered_item)
-            
+
         return filtered_content
 
     def _remove_null_values(self, obj):
@@ -193,28 +193,28 @@ class ManageContent:
             return [self._remove_null_values(item) for item in obj if item is not None]
         else:
             return obj
-            
+
     def CreatePage(self, space_key, title, body, parent_id=None, representation="storage"):
         """Create a new page in Confluence.
-        
+
         Args:
             space_key: The key of the space where the page will be created
             title: The title of the new page
             body: The content of the new page (in the specified representation format)
             parent_id: Optional parent page ID if this is a child page
-            representation: Content representation - 'storage' for Confluence storage format, 
+            representation: Content representation - 'storage' for Confluence storage format,
                           'editor' for editor format, etc.
-                          
+
         Returns:
             The created page data if successful
         """
         try:
             logger.info(f"Creating new page '{title}' in space '{space_key}'")
-            
+
             # Validate the representation type
             if representation not in CONTENT_REPRESENTATIONS:
                 representation = "storage"  # Default to storage format
-            
+
             # Create the page
             if parent_id:
                 logger.info(f"Creating as child of page ID: {parent_id}")
@@ -232,24 +232,24 @@ class ManageContent:
                     body=body,
                     representation=representation
                 )
-            
+
             logger.info(f"Successfully created page with ID: {page.get('id')}")
             return self._remove_null_values(page)
         except Exception as e:
             error_msg = f"Failed to create page '{title}' in space '{space_key}': {str(e)}"
             logger.error(error_msg)
             raise ConfluenceError(error_msg)
-            
+
     def UpdatePage(self, page_id, title=None, body=None, representation="storage", version_comment=None):
         """Update an existing Confluence page.
-        
+
         Args:
             page_id: The ID of the page to update
             title: The new title of the page (optional)
             body: The new content of the page (optional)
             representation: Content representation format
             version_comment: Optional comment for the version history
-            
+
         Returns:
             The updated page data if successful
         """
@@ -260,39 +260,39 @@ class ManageContent:
                 error_msg = f"Page with ID '{page_id}' not found"
                 logger.error(error_msg)
                 raise ConfluenceError(error_msg)
-            
+
             # Extract current version and title if needed
             current_version = current_page.get('version', {}).get('number', 0)
             new_version = current_version + 1
             current_title = current_page.get('title', '')
-            
+
             # Use current title if none provided
             if not title:
                 title = current_title
-            
+
             # If no body provided, keep existing body
             if not body:
                 # Get current body in the requested representation
                 body = self.confluence.get_page_by_id(
-                    page_id, 
+                    page_id,
                     expand=f"body.{representation}"
                 ).get('body', {}).get(representation, {}).get('value', '')
-            
+
             # Validate the representation type
             if representation not in CONTENT_REPRESENTATIONS:
                 representation = "storage"  # Default to storage format
-                
+
             logger.info(f"Updating page '{title}' (ID: {page_id}) to version {new_version}")
-            
+
             # Update the page
+            # Note: The atlassian-python-api library handles version incrementing automatically
             updated_page = self.confluence.update_page(
                 page_id=page_id,
                 title=title,
                 body=body,
-                representation=representation,
-                version=new_version
+                representation=representation
             )
-            
+
             # Add version comment if provided
             if version_comment and updated_page:
                 self.confluence.set_page_property(
@@ -301,7 +301,7 @@ class ManageContent:
                     property_value={"comment": version_comment}
                 )
                 logger.info(f"Added version comment: {version_comment}")
-                
+
             logger.info(f"Successfully updated page to version {new_version}")
             return self._remove_null_values(updated_page)
         except Exception as e:

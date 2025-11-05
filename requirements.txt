@@ -4,7 +4,7 @@ mcp==1.9.1  # MCP SDK
 fastmcp==1.0.0  # Framework for creating MCP servers
 
 # Utilities
-python-dotenv==1.0.0  # For managing environment variables
+python-dotenv>=1.0.1  # For managing environment variables (compatible with fastmcp 1.0)
 pydantic==2.11.5  # For data validation and modeling
 
 # Dev dependencies
